@@ -13,132 +13,117 @@ To perform regular differncing,seasonal adjustment and log transformatio on inte
 ## PROGRAM:
 ```
 import pandas as pd
-
 import numpy as np
-
 import matplotlib.pyplot as plt
-
 from statsmodels.tsa.seasonal import seasonal_decompose
 
-data=pd.read_csv('AirPassengers.csv')
+data = pd.read_csv('cardekho.csv')
+ts_data = data.groupby("year")["selling_price"].mean().reset_index()
 
-data.head()
+ts_data["year"] = pd.to_datetime(ts_data["year"], format="%Y")
+ts_data.set_index("year", inplace=True)
 
-data['Month']=pd.to_datetime(data['Month']) #data=pd.read_csv("/content/AirPassengers.csv",parse_dates=
+ts_data["selling_price"] = ts_data["selling_price"]
 
-data.set_index('Month', inplace=True)
+ts_data["price_diff"] = ts_data["selling_price"] - ts_data["selling_price"].shift(1)
 
-data['passengers_diff']=data['#Passengers']-data['#Passengers'].shift(1)
+period = 2 if len(ts_data) > 2 else 1
+result = seasonal_decompose(ts_data["selling_price"], model="additive", period=period)
+ts_data["price_sea_diff"] = result.resid
 
-result = seasonal_decompose(data['#Passengers'], model='additive', period=12)
+ts_data["price_log"] = np.log(ts_data["selling_price"])
 
-data['passengers_sea_diff']=result.resid
+ts_data["price_log_diff"] = ts_data["price_log"] - ts_data["price_log"].shift(1)
 
-data['passengers_log'] = np.log(data['#Passengers'])
+if ts_data["price_log_diff"].dropna().shape[0] > period:
+    result_log = seasonal_decompose(ts_data["price_log_diff"].dropna(), model="additive", period=period)
+    ts_data["price_log_seasonal_diff"] = result_log.resid
+else:
+    ts_data["price_log_seasonal_diff"] = np.nan
 
-data['passengers_log_diff']=data['passengers_log']-data['passengers_log'].shift(1)
-
-result = seasonal_decompose (data['passengers_log_diff'].dropna(), model='additive', period=12)
-
-data['passengers_log_seasonal_diff']=result.resid
-
+```
+```
 plt.figure(figsize=(12, 20))
 
 plt.subplot(6, 1, 1)
-
-plt.plot(data['#Passengers'], label='Original')
-
-plt.legend(loc='best')
-
-plt.title('Original Data')
-
-plt.xlabel('Year')
-
-plt.ylabel('No of passengers')
-```
-```
-import matplotlib.pyplot as plt
-
-plt.figure(figsize=(12, 20))   
-
-plt.subplot(6, 1, 2)
-plt.plot(data['passengers_diff'], label='Regular Difference')
-
-plt.legend(loc='best')
-plt.title('Regular Differencing')
-plt.xlabel('Year')
-plt.ylabel('Differenced No of passengers')
-
-plt.show()
-```
-```
-import matplotlib.pyplot as plt
-
-plt.figure(figsize=(12, 18))   
-
-plt.subplot(6, 1, 3)
-plt.plot(data['passengers_sea_diff'], label='Seasonal Adjustment')
-plt.legend(loc='best')
-plt.title('Seasonal Adjustment')
-plt.xlabel('Year')
-plt.ylabel('Seasonally adjusted No of passengers')
-```
-```
-plt.figure(figsize=(12, 18)) 
-plt.subplot(6, 1, 4)
-plt.plot(data['passengers_log'], label='Log Transformation')
-plt.legend(loc='best')
-plt.title('Log Transformation')
-plt.xlabel('Year')
-plt.ylabel('Log (No of passengers)')
-```
-```
-plt.figure(figsize=(12, 20)) 
-plt.subplot(6, 1, 5)
-plt.plot(data['passengers_log_diff'], label='Log Transformation and Regular Differencing')
-plt.legend(loc='best')
-plt.title('Log Transformation and Regular Differencing')
-plt.xlabel('Year')
-plt.ylabel('Log (No of passengers)')
-```
-```
-plt.figure(figsize=(12, 20)) 
-plt.subplot(6, 1, 6)
-plt.plot(data['passengers_log_seasonal_diff'], 
-         label='Log Transformation + Regular Differencing + Seasonal Differencing')
-plt.legend(loc='best')
-plt.title('Log Transformation + Regular & Seasonal Differencing')
-plt.xlabel('Year')
-plt.ylabel('SDiff (RDiff (Log (No of passengers)))')
+plt.plot(ts_data["selling_price"], label="Original")
+plt.legend(loc="best")
+plt.title("Original Data (Average Selling Price by Year)")
+plt.xlabel("Year")
+plt.ylabel("Price")
 
 plt.tight_layout()
 plt.show()
 ```
+```
+plt.figure(figsize=(12, 20))
+plt.subplot(6, 1, 2)
+plt.plot(ts_data["price_diff"], label="Regular Difference")
+plt.legend(loc="best")
+plt.title("Regular Differencing")
+plt.xlabel("Year")
+plt.ylabel("Differenced Price")
+```
+```
+plt.figure(figsize=(12, 20))
+plt.subplot(6, 1, 3)
+plt.plot(ts_data["price_sea_diff"], label="Seasonal Adjustment")
+plt.legend(loc="best")
+plt.title("Seasonal Adjustment")
+plt.xlabel("Year")
+plt.ylabel("Seasonally Adjusted Price")
+```
+```
+plt.figure(figsize=(12, 20))
+plt.subplot(6, 1, 4)
+plt.plot(ts_data["price_log"], label="Log Transformation")
+plt.legend(loc="best")
+plt.title("Log Transformation")
+plt.xlabel("Year")
+plt.ylabel("Log(Price)")
+```
+```
+plt.figure(figsize=(12, 20))
+plt.subplot(6, 1, 5)
+plt.plot(ts_data["price_log_diff"], label="Log Transformation and Regular Differencing")
+plt.legend(loc="best")
+plt.title("Log Transformation and Regular Differencing")
+plt.xlabel("Year")
+plt.ylabel("RDiff(Log(Price))")
+```
+```
+plt.figure(figsize=(12, 20))
+plt.subplot(6, 1, 6)
+plt.plot(ts_data["price_log_seasonal_diff"], label="Log + Regular + Seasonal Differencing")
+plt.legend(loc="best")
+plt.title("Log + Regular + Seasonal Differencing")
+plt.xlabel("Year")
+plt.ylabel("SDiff(RDiff(Log(Price)))")
+```
 ## OUTPUT:
-
 ### ORIGINAL:
 
-<img width="1248" height="433" alt="image" src="https://github.com/user-attachments/assets/8055454f-c423-4f59-b741-ef27ead61e0a" />
+<img width="1251" height="385" alt="image" src="https://github.com/user-attachments/assets/544f318b-b2b5-4f0f-ba6d-9b0a0d1bee8e" />
 
 ### REGULAR DIFFERENCING:
 
-<img width="1266" height="382" alt="image" src="https://github.com/user-attachments/assets/815f85ef-1675-420d-b028-caea86a7b3cf" />
+<img width="1237" height="413" alt="image" src="https://github.com/user-attachments/assets/aa250ad3-1d68-4966-84c6-d31d297f37a9" />
 
 ### SEASONAL ADJUSTMENT:
 
-<img width="1252" height="398" alt="image" src="https://github.com/user-attachments/assets/332d9296-150b-445e-9e23-b313702781ab" />
+<img width="1235" height="403" alt="image" src="https://github.com/user-attachments/assets/23e2941b-289b-4299-b37c-5a00ec56f819" />
 
 ### LOG TRANSFORMATION:
 
-<img width="1255" height="405" alt="image" src="https://github.com/user-attachments/assets/25e6ad2e-99d2-4ff0-82ed-e77c2f3bb827" />
+<img width="1241" height="422" alt="image" src="https://github.com/user-attachments/assets/4a896a4f-fa6e-42bc-980a-fc257cd82377" />
 
 ### Log Transformation and Regular Differencing:
 
-<img width="1247" height="422" alt="image" src="https://github.com/user-attachments/assets/ea456e82-247f-4930-be28-85709e4d58fb" />
+<img width="1241" height="421" alt="image" src="https://github.com/user-attachments/assets/639999f4-cf6a-464f-91e8-0cc77ad12961" />
 
 ### Log Transformation + Regular & Seasonal Differencing:
 
-<img width="1245" height="403" alt="image" src="https://github.com/user-attachments/assets/9551554c-8640-4437-8c51-041a4ed45d0b" />
+<img width="1247" height="417" alt="image" src="https://github.com/user-attachments/assets/7cf9e794-c361-49a9-b79e-fbbb33493133" />
 
 ### RESULT:
 Thus we have created the python code for the conversion of non stationary to stationary data on international airline passenger
